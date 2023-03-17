@@ -9,7 +9,12 @@ const app = Express();
 app.use(bodyParser.json())
 
 
+
+const teahterSize = 5;
+
+
 app.get("/", (req, res) => {
+  db.delete("reservation")
   res.send("https://http.cat/202");
 });
 
@@ -30,10 +35,16 @@ app.get("/reservation/:id", async (req, res) => {
 });
 
 app.post("/reservation", async (req, res) => {  
-  let { eventId, userId, seats } = req.body;
+  let { projectionId, userId, seats } = req.body;
+
+  if(! await seatsAreValid(seats , projectionId)){
+    res.sendStatus(403);
+    return;
+  }
+  
 
   let newReservation = await db.create("reservation", {
-    eventId,
+    projectionId,
     userId,
     seats,
   });
@@ -66,3 +77,28 @@ app.delete("/reservation/:id", async (req, res) => {
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Server started on port ${process.env.PORT}`);
 });
+
+
+
+
+const seatsAreValid = async (seats: Array<Array<number>> , projectionId: string) =>{
+
+  let response:any = await db.query(`SELECT seats FROM reservation WHERE projectionId = ${projectionId}`);
+  let reservedSeats = response[0].result.map(res => res.seats).flat();
+
+  let validity = seats.every(seat => {
+    if(seat[0] > teahterSize || seat[1] > teahterSize) {
+      return false;
+    }
+    return reservedSeats.every(reservedSeat => {
+      if(seat[0] == reservedSeat[0] && seat[1] == reservedSeat[1]){
+        return false;
+      }
+      return true;
+    })
+  })
+
+  console.log(validity);
+
+  return validity;
+}
