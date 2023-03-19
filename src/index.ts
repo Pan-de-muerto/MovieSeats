@@ -42,16 +42,31 @@ app.post("/reservation", async (req, res) => {
     return;
   }
   
-
   let newReservation = await db.create("reservation", {
     projectionId,
     userId,
     seats,
+    status: "RESERVED",
+    createdAt: new Date()
   });
 
   if (!!newReservation) {
     res.json(newReservation);
   } else res.status(500);
+
+});
+
+app.post("/reservation/:id/payment", async (req, res) => {    
+  try {
+    let reservationId = req.params.id
+    // validate payment;
+
+
+    let response = await db.change(reservationId , {status : "PAID"})    
+    res.json(response);
+  } catch (error) {
+    res.status(500).json("Payment failed!");
+  }
 });
 
 app.patch("/reservation/:id", async (req, res) => {
@@ -77,8 +92,6 @@ app.delete("/reservation/:id", async (req, res) => {
 app.listen(process.env.PORT || 3000, () => {
   console.log(`Server started on port ${process.env.PORT}`);
 });
-
-
 
 
 const seatsAreValid = async (seats: Array<Array<number>> , projectionId: string) =>{
