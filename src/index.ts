@@ -3,14 +3,33 @@ import bodyParser from "body-parser";
 import { config } from "dotenv";
 import { initDB } from "./lib/surreal";
 import db from "./lib/surreal";
+import cron from "node-cron";
+
 config();
 initDB();
 const app = Express();
 app.use(bodyParser.json())
-
-
-
 const teahterSize = 5;
+
+
+
+// TO-DO:
+// use proper types for ids.
+// use proper date type for reservations.
+// add cron job to clean drafts older than n minutes.
+// move functions to other files
+
+
+cron.schedule('* * * * *', () => {
+  console.log('Deleting unconfirmed reservations');
+  reservationsCleanup();
+});
+
+const reservationsCleanup = async () => {
+  let now = getTimestampInSeconds();
+  let fiveMinutesAgo = now - (60 * 5);
+  await db.query(`DELETE reservation WHERE createdAt <= ${fiveMinutesAgo} AND status != "PAID"`);    
+}
 
 
 app.get("/", (req, res) => {
@@ -47,7 +66,7 @@ app.post("/reservation", async (req, res) => {
     userId,
     seats,
     status: "RESERVED",
-    createdAt: new Date()
+    createdAt: getTimestampInSeconds()
   });
 
   if (!!newReservation) {
@@ -114,4 +133,9 @@ const seatsAreValid = async (seats: Array<Array<number>> , projectionId: string)
   console.log(validity);
 
   return validity;
+}
+
+
+function getTimestampInSeconds () {
+  return Math.floor(Date.now() / 1000)
 }
